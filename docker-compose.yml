@@ -9,7 +9,7 @@ services:
     command: python /app/main.py
     depends_on:
       lavalink:
-        condition: service_started
+        condition: service_healthy
 
   lavalink:
     image: ghcr.io/lavalink-devs/lavalink:4-alpine
@@ -24,3 +24,10 @@ services:
       # - ./plugins/:/opt/Lavalink/plugins/
     ports:
       - 2333:2333
+
+    healthcheck:
+      test: ["CMD", "wget", "--header", "Authorization: Qwert*9", "http://lavalink:2333/version"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s

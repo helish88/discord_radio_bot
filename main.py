@@ -1,7 +1,6 @@
 import os
 import sys
 import traceback
-
 from dotenv import load_dotenv
 import disnake
 from disnake.ext import commands
@@ -10,7 +9,6 @@ from disnake.ext import commands
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = commands.InteractionBot(
-    command_sync_flags=commands.CommandSyncFlags.all(),
     intents=disnake.Intents.default(),
     reload=True,
 )
@@ -26,9 +24,7 @@ except Exception:
 @bot.event
 async def on_ready():
     await bot.change_presence(
-        activity=disnake.Activity(
-            type=disnake.ActivityType.custom, name="custom", state="testing"
-        )
+        activity=disnake.Activity(type=disnake.ActivityType.listening, name="/radio")
     )
     print(f"logged in as\n{bot.user.name}\n{bot.user.id}\n----")
 

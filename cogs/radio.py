@@ -1,4 +1,3 @@
-import traceback
 from typing import Optional
 import aiohttp
 import asyncio
@@ -213,33 +212,33 @@ class RadioSearch(disnake.ui.View):
 
 class Radio(
     commands.Cog,
-    slash_command_attrs={"contexts": disnake.InteractionContextTypes.guild},
-    user_command_attrs={"contexts": disnake.InteractionContextTypes.guild},
-    message_command_attrs={"contexts": disnake.InteractionContextTypes.guild},
+    slash_command_attrs={"contexts": disnake.InteractionContextTypes(guild=True)},
+    user_command_attrs={"contexts": disnake.InteractionContextTypes(guild=True)},
+    message_command_attrs={"contexts": disnake.InteractionContextTypes(guild=True)},
 ):  # slash commands will work only in a discord server(not in DM)
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
+        self.wavelink_node_is_ready = False
         bot.loop.create_task(self.connect_nodes())
 
-    def cog_unload(self):
+    def cog_unload(self) -> None:
         print("node canceled")
         self.bot.loop.create_task(self.dissconect_nodes())
 
-    async def dissconect_nodes(self):
+    async def dissconect_nodes(self) -> None:
         node = wavelink.Pool().get_node()
         await node.close()
 
-    async def connect_nodes(self):
+    async def connect_nodes(self) -> None:
         await self.bot.wait_until_ready()
         nodes = [wavelink.Node(uri="http://lavalink:2333", password="Qwert*9")]
-
-        # cache_capacity is EXPERIMENTAL. Turn it off by passing None
         await wavelink.Pool.connect(nodes=nodes, client=self.bot, cache_capacity=100)
 
     @commands.Cog.listener()
     async def on_wavelink_node_ready(
         self, payload: wavelink.NodeReadyEventPayload
     ) -> None:
+        self.wavelink_node_is_ready = True
         print(
             f"Radio Wavelink Node connected: {payload.node!r} | Resumed: {payload.resumed}"
         )
@@ -251,6 +250,15 @@ class Radio(
     )
     @commands.cooldown(1, 10, commands.BucketType.member)
     async def play_radio(self, inter: disnake.ApplicationCommandInteraction):
+        if not self.wavelink_node_is_ready:
+            return await inter.response.send_message(
+                embed=disnake.Embed(
+                    color=disnake.Color.red(),
+                    title="Lavalink node aren't ready, try again in few seconds",
+                ),
+                ephemeral=True,
+                delete_after=10,
+            )
         if not inter.author.voice:
             return await inter.response.send_message(
                 embed=disnake.Embed(
@@ -295,25 +303,27 @@ class Radio(
     async def play_radio_error(
         self, inter: disnake.ApplicationCommandInteraction, error
     ):
+        print(f"{error}\n{type(error)}")
         if isinstance(error, commands.CommandOnCooldown):
-            return inter.send(
+            return await inter.send(
                 embed=disnake.Embed(
                     color=disnake.Color.red(),
                     description=f"{inter.user.mention} You'll be able to use the command in "
-                    f"{error.retry_after:.1f} seconds",
-                )
+                    f"{error.retry_after:.2f} seconds",
+                ),
+                ephemeral=True,
+                delete_after=10,
             )
         else:
-            full_error = traceback.format_exception(
-                type(error), error, error.__traceback
-            )
             return await inter.send(
                 embed=disnake.Embed(
-                    color=disnake.Color.red(), description=f"```py\n{full_error}```"
-                )
+                    color=disnake.Color.red(), description=f"``{error}```"
+                ),
+                ephemeral=True,
+                delete_after=10,
             )
 
 
-def setup(bot: commands.Bot):
+def setup(bot: commands.InteractionBot):
     bot.add_cog(Radio(bot))
     print("Radio is loaded.")
