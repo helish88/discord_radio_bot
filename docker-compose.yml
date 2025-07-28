@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  radio_bot:
+    container_name: radio_bot
+    build: ./
+    image: radio_bot_image
+    restart: always
+    command: python /app/main.py
+    depends_on:
+      lavalink:
+        condition: service_started
+
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:4-alpine
+    container_name: my_lavalink
+    restart: unless-stopped
+    environment:
+      - _JAVA_OPTIONS=-Xmx6G
+      - SERVER_PORT=2333
+      - LAVALINK_SERVER_PASSWORD=Qwert*9
+    volumes:
+      - ./application.yml:/opt/Lavalink/application.yml
+      # - ./plugins/:/opt/Lavalink/plugins/
+    ports:
+      - 2333:2333
